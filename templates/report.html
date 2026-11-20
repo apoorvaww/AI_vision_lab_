@@ -1,0 +1,186 @@
+{% extends 'base.html' %}{% block title %}Experiment Report — AI VisionLab{% endblock %}{% block content %}
+<div class="page-head">
+  <span class="step">STEP 09</span>
+  <h1>Experiment Report & Export</h1>
+  <p>A comprehensive, reproducible laboratory report documenting dataset statistics, AI preprocessing, architecture configurations, holdout evaluation metrics, and final conclusions.</p>
+</div>
+
+<div class="report-actions">
+  <a class="btn primary" href="{{ url_for('download_notebook', job_id=job_id) }}">Download .ipynb Notebook</a>
+  <a class="btn secondary" href="{{ url_for('download_csv', job_id=job_id) }}">Export CSV Results</a>
+  <a class="btn secondary" href="{{ url_for('download_pdf', job_id=job_id) }}">Download PDF Report</a>
+</div>
+
+<div class="panel report-sheet">
+  <div class="report-header">
+    <div>
+      <span class="eyebrow">AI VISIONLAB EVALUATION REPORT</span>
+      <h2>{{ job.dataset_name }}</h2>
+      <p style="font-size:11px;color:var(--muted);margin:4px 0 0">Generated for experiment run: <code>{{ job_id }}</code></p>
+    </div>
+    <span class="report-id">{{ job_id }}</span>
+  </div>
+
+  <div class="report-summary">
+    <div>
+      <span>TOTAL IMAGES</span>
+      <b>{{ result.dataset_summary.num_valid_images }}</b>
+    </div>
+    <div>
+      <span>CLASSES</span>
+      <b>{{ result.dataset_summary.num_classes }}</b>
+    </div>
+    <div>
+      <span>TOP ARCHITECTURE</span>
+      <b>{{ best.model_name }}</b>
+    </div>
+    <div>
+      <span>HOLDOUT ACCURACY</span>
+      <b style="color:var(--accent)">{{ (best.expected_accuracy*100)|round(1) }}%</b>
+    </div>
+  </div>
+
+  <!-- Section 1: Preprocessing & Data Pipeline -->
+  <h3 style="margin-top:24px">1. Preprocessing & Diagnostic Settings</h3>
+  <div style="background:#f8f9fa;border:1px solid var(--line);border-radius:10px;padding:16px;font-size:11px;line-height:1.7;margin-bottom:20px">
+    • <b>Dataset Layout:</b> {{ result.dataset_summary.dataset_format }}<br>
+    • <b>Target Tensor Resolution:</b> {{ job.get('image_size', 96) }} × {{ job.get('image_size', 96) }} pixels<br>
+    • <b>Normalization:</b> ImageNet Standard (Zero-mean, unit-variance)<br>
+    • <b>Class Imbalance Safeguard:</b> {% if job.get('characteristics', {}).get('is_imbalanced') %}Enabled (Weighted Sampler & Class Loss){% else %}Standard uniform sampling{% endif %}<br>
+    • <b>Holdout Strategy:</b> {{ result.evaluation.test_set_source }} ({{ best.split_label }}) · {{ result.evaluation.duplicate_files_removed }} duplicate images purged
+  </div>
+
+  <!-- Section 2: Model Performance Comparison -->
+  <h3>2. Evaluation Metrics & Leaderboard</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Model Architecture</th>
+          <th>Family</th>
+          <th>Accuracy</th>
+          <th>Precision (Macro)</th>
+          <th>Recall (Macro)</th>
+          <th>F1 Macro</th>
+          <th>ROC-AUC</th>
+          <th>Train Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in leaderboard %}
+        <tr {% if loop.first %}style="background:#fcfaff;font-weight:700"{% endif %}>
+          <td>{{ row.model_name }}</td>
+          <td><span style="font-size:9px;text-transform:uppercase;color:#64748b">{{ row.model_family }}</span></td>
+          <td>{{ (row.accuracy * 100)|round(1) }}%</td>
+          <td>{{ (row.precision_macro * 100)|round(1) }}%</td>
+          <td>{{ (row.recall_macro * 100)|round(1) }}%</td>
+          <td>{{ (row.f1_macro * 100)|round(1) }}%</td>
+          <td>{{ row.roc_auc|round(3) }}</td>
+          <td>{{ row.train_seconds }}s</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if best.is_cv and best.fold_metrics %}
+  <h4 style="margin-top:20px;font-size:12px;color:#1e293b">Cross-Validation Breakdown ({{ best.cv_folds }} Folds — {{ best.model_name }})</h4>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Fold</th>
+          <th style="text-align:center">Accuracy</th>
+          <th style="text-align:center">Precision (Macro)</th>
+          <th style="text-align:center">Recall (Macro)</th>
+          <th style="text-align:center">F1 Macro</th>
+          <th style="text-align:center">ROC-AUC</th>
+          <th style="text-align:center">Duration</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in best.fold_metrics %}
+        <tr>
+          <td>Fold {{ f.fold }}</td>
+          <td style="text-align:center">{{ (f.accuracy * 100)|round(1) }}%</td>
+          <td style="text-align:center">{{ (f.precision_macro * 100)|round(1) }}%</td>
+          <td style="text-align:center">{{ (f.recall_macro * 100)|round(1) }}%</td>
+          <td style="text-align:center">{{ (f.f1_macro * 100)|round(1) }}%</td>
+          <td style="text-align:center">{{ f.roc_auc|round(3) }}</td>
+          <td style="text-align:center">{{ f.train_seconds }}s</td>
+        </tr>
+        {% endfor %}
+        <tr style="background:#f8fafc;font-weight:700">
+          <td>Mean ± Std Dev</td>
+          <td style="text-align:center">{{ (best.expected_accuracy * 100)|round(1) }}% ± {{ (best.accuracy_std * 100)|round(1) }}%</td>
+          <td style="text-align:center">{{ (best.expected_precision * 100)|round(1) }}% ± {{ (best.precision_macro_std * 100)|round(1) }}%</td>
+          <td style="text-align:center">{{ (best.expected_recall * 100)|round(1) }}% ± {{ (best.recall_macro_std * 100)|round(1) }}%</td>
+          <td style="text-align:center">{{ (best.expected_f1_macro * 100)|round(1) }}% ± {{ (best.f1_macro_std * 100)|round(1) }}%</td>
+          <td style="text-align:center">{{ best.expected_roc_auc|round(3) }} ± {{ best.roc_auc_std|round(3) }}</td>
+          <td style="text-align:center">{{ best.train_seconds }}s total</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- Section 3: Confusion Matrix -->
+  <h3 style="margin-top:28px">3. Confusion Matrix ({{ best.model_name }})</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="background:#f8f9fa">Actual \ Predicted</th>
+          {% for c in best.class_names %}
+          <th style="text-align:center">{{ c }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in best.confusion_matrix %}
+        {% set actual_idx = loop.index0 %}
+        <tr>
+          <th style="background:#f8f9fa">{{ best.class_names[actual_idx] }}</th>
+          {% for v in row %}
+            {% set pred_idx = loop.index0 %}
+            <td style="text-align:center;{% if actual_idx == pred_idx and v > 0 %}background:#ecfdf5;color:#065f46;font-weight:700{% elif v > 0 %}background:#fef2f2;color:#b91c1c;font-weight:600{% endif %}">
+              {{ v }}
+            </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Section 4: Explainable AI (Grad-CAM & Grad-CAM++) -->
+  {% set xai_vis = best.xai_visualizations if best.xai_visualizations else result.get('xai_visualizations', []) %}
+  {% if xai_vis %}
+  <h3 style="margin-top:28px">4. Explainable AI Visualizations (Grad-CAM / Grad-CAM++)</h3>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:16px;margin-top:12px;margin-bottom:24px">
+    {% for vis in xai_vis %}
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;text-align:center">
+      <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:8px">
+        <span>Class: {{ vis.class_name }}</span>
+        <span style="color:#15803d">{{ (vis.confidence * 100)|round(1) }}% Conf</span>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:center">
+        <img src="{{ vis.original_base64 }}" style="width:110px;height:auto;border-radius:4px;border:1px solid #cbd5e1">
+        <img src="{{ vis.heatmap_base64 }}" style="width:110px;height:auto;border-radius:4px;border:1px solid #cbd5e1">
+      </div>
+      <small style="display:block;margin-top:6px;font-size:10px;color:#64748b">Original vs {{ vis.method }} Overlay</small>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Section 5: Conclusions -->
+  <div class="best-callout">
+    <span>Analytical Summary & Conclusions</span>
+    <b>{{ best.model_name }} demonstrates the strongest generalization capability</b>
+    <p>
+      On the <b>{{ best.split_label }} holdout split</b>, the model secured <b>{{ (best.expected_accuracy*100)|round(1) }}% holdout accuracy</b>, <b>{{ (best.expected_f1_macro*100)|round(1) }}% macro F1</b>, and an ROC-AUC of <b>{{ best.expected_roc_auc|round(3) }}</b>. The training accuracy was <b>{{ (best.train_accuracy*100)|round(1) }}%</b>, establishing a tight generalization gap of <b>{{ (best.generalization_gap*100)|round(1) }} percentage points</b>.
+    </p>
+  </div>
+</div>
+{% endblock %}

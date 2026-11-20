@@ -1,0 +1,146 @@
+{% extends 'base.html' %}{% block title %}Model Configuration — AI VisionLab{% endblock %}{% block content %}
+<div class="page-head">
+  <span class="step">STEP 05</span>
+  <h1>Configure Model Training</h1>
+  <p>Fine-tune hyperparameters and validation strategy for the selected architectures. Sensible defaults have been pre-populated based on your dataset and preprocessing recommendations.</p>
+</div>
+
+<form action="{{ url_for('train_job', job_id=job_id) }}" method="post" id="config-form">
+  <input type="hidden" name="job_id" value="{{ job_id }}">
+  {% for key in selected %}
+  <input type="hidden" name="models" value="{{ key }}">
+  {% endfor %}
+
+  <div class="config-layout">
+    <div class="panel">
+      <div class="panel-title">
+        <div>
+          <span class="eyebrow">TRAINING HYPERPARAMETERS</span>
+          <h3>Core Optimization Settings</h3>
+        </div>
+      </div>
+      <div class="form-grid">
+        <label>Epochs (Training Iterations)
+          <input type="number" name="epochs" min="1" max="100" value="{{ job.get('epochs', 5) }}" required>
+        </label>
+        <label>Mini-Batch Size
+          <select name="batch_size">
+            <option value="8" {% if job.get('batch_size')==8 %}selected{% endif %}>8 samples / batch</option>
+            <option value="16" {% if job.get('batch_size', 16)==16 %}selected{% endif %}>16 samples / batch (Standard)</option>
+            <option value="32" {% if job.get('batch_size')==32 %}selected{% endif %}>32 samples / batch</option>
+            <option value="64" {% if job.get('batch_size')==64 %}selected{% endif %}>64 samples / batch</option>
+          </select>
+        </label>
+        <label>Initial Learning Rate
+          <input type="number" name="learning_rate" step="0.0001" min="0.00001" max="0.1" value="{{ job.get('learning_rate', 0.001) }}" required>
+        </label>
+        <label>Optimizer
+          <select name="optimizer">
+            <option value="Adam" {% if job.get('optimizer')=='Adam' %}selected{% endif %}>Adam (Adaptive Moments)</option>
+            <option value="AdamW" {% if job.get('optimizer')=='AdamW' %}selected{% endif %}>AdamW (Weight Decay)</option>
+            <option value="SGD" {% if job.get('optimizer')=='SGD' %}selected{% endif %}>SGD with Momentum (0.9)</option>
+          </select>
+        </label>
+        <label>Loss Function
+          <select name="loss">
+            <option value="Cross Entropy" selected>Cross Entropy Loss</option>
+            <option value="Weighted Cross Entropy">Weighted Cross Entropy (Imbalance-safe)</option>
+          </select>
+        </label>
+        <label>Tensor Input Resolution
+          <select name="image_size">
+            <option value="64" {% if job.get('image_size')==64 %}selected{% endif %}>64 × 64 px</option>
+            <option value="96" {% if job.get('image_size', 96)==96 %}selected{% endif %}>96 × 96 px</option>
+            <option value="128" {% if job.get('image_size')==128 %}selected{% endif %}>128 × 128 px</option>
+            <option value="224" {% if job.get('image_size')==224 %}selected{% endif %}>224 × 224 px</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">
+        <div>
+          <span class="eyebrow">EVALUATION STRATEGY</span>
+          <h3>Validation & Cross-Validation</h3>
+        </div>
+      </div>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:12px">
+        Choose between standard holdout splitting or K-Fold stratified cross-validation to assess model generalization.
+      </p>
+      <div class="split-options" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px;margin-bottom:16px">
+        <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer;background:#fff;transition:border-color 0.2s">
+          <input type="radio" name="val_strategy" value="holdout_80" {% if not job.get('is_cv') and job.get('split_ratios', [0.8])[0] == 0.8 %}checked{% endif %}>
+          <div>
+            <div style="font-weight:700;font-size:13px;color:#1e293b">Holdout 80 / 20</div>
+            <div style="font-size:11px;color:#64748b">80% train, 20% validation split</div>
+          </div>
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer;background:#fff;transition:border-color 0.2s">
+          <input type="radio" name="val_strategy" value="holdout_70" {% if not job.get('is_cv') and job.get('split_ratios', [0.8])[0] == 0.7 %}checked{% endif %}>
+          <div>
+            <div style="font-weight:700;font-size:13px;color:#1e293b">Holdout 70 / 30</div>
+            <div style="font-size:11px;color:#64748b">70% train, 30% validation split</div>
+          </div>
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer;background:#fff;transition:border-color 0.2s">
+          <input type="radio" name="val_strategy" value="cv_5" {% if job.get('is_cv') and job.get('cv_folds') == 5 %}checked{% endif %}>
+          <div>
+            <div style="font-weight:700;font-size:13px;color:#1e293b">5-Fold Cross-Validation</div>
+            <div style="font-size:11px;color:#64748b">5 folds, 80/20 train/test per fold</div>
+          </div>
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer;background:#fff;transition:border-color 0.2s">
+          <input type="radio" name="val_strategy" value="cv_10" {% if job.get('is_cv') and job.get('cv_folds') == 10 %}checked{% endif %}>
+          <div>
+            <div style="font-weight:700;font-size:13px;color:#1e293b">10-Fold Cross-Validation</div>
+            <div style="font-size:11px;color:#64748b">10 folds, 90/10 train/test per fold</div>
+          </div>
+        </label>
+      </div>
+      <label class="full-field">Optimization / Ranking Metric
+        <select name="metric">
+          <option value="f1_macro" {% if job.get('metric')=='f1_macro' %}selected{% endif %}>Macro F1-Score (Evaluates All Classes Equally)</option>
+          <option value="accuracy" {% if job.get('metric')=='accuracy' %}selected{% endif %}>Overall Accuracy</option>
+        </select>
+      </label>
+    </div>
+
+    <!-- Explainable AI (XAI) Options -->
+    <div class="panel" style="grid-column: 1 / -1">
+      <div class="panel-title">
+        <div>
+          <span class="eyebrow">EXPLAINABLE AI (XAI)</span>
+          <h3>Visual Attribution & Interpretability</h3>
+        </div>
+      </div>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:14px">
+        Generate visual heatmaps highlighting which spatial regions influenced the prediction. Applied consistently across all convolutional and hybrid architectures.
+      </p>
+      <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:center">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600">
+          <input type="checkbox" name="xai_enabled" value="true" {% if job.get('xai_enabled', True) %}checked{% endif %} style="width:18px;height:18px;accent-color:var(--accent)">
+          <span>Enable Explainability Heatmaps (Grad-CAM / Grad-CAM++)</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;font-size:13px">
+          <span style="color:#64748b">Attribution Algorithm:</span>
+          <select name="xai_method" style="padding:6px 12px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-weight:600">
+            <option value="gradcam" {% if job.get('xai_method', 'gradcam')=='gradcam' %}selected{% endif %}>Grad-CAM (Standard 1st-Order Gradients)</option>
+            <option value="gradcampp" {% if job.get('xai_method')=='gradcampp' %}selected{% endif %}>Grad-CAM++ (Higher-Order Pixel Attribution)</option>
+          </select>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="selected-strip">
+    <b>{{ selected|length }} model{{ 's' if selected|length != 1 else '' }} to train</b>
+    <span>{{ selected_labels|join(' · ') }}</span>
+  </div>
+
+  <div class="actions end">
+    <a class="btn secondary" href="{{ url_for('models_page', job_id=job_id) }}">← Change Models</a>
+    <button class="btn primary" type="submit" id="start-btn">Start Training <span>→</span></button>
+  </div>
+</form>
+{% endblock %}
