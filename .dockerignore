@@ -1,0 +1,56 @@
+# Git
+.git
+.gitignore
+
+# Python caches and bytecode
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# OS-specific files and metadata
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+__MACOSX
+
+# IDE and editor settings
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Test and coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temporary and local scratch data
+scratch/
+tmp/
+temp/
+*.tmp
+*.log
+
+# Application runtime data (managed via Docker persistent volumes)
+webapp_data/uploads/*
+webapp_data/results/*
+!webapp_data/uploads/.gitkeep
+!webapp_data/results/.gitkeep

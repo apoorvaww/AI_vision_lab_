@@ -64,3 +64,5 @@ dist/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+/results.json

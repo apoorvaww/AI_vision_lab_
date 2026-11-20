@@ -127,6 +127,8 @@ def _image_files(
         return valid, corrupted, skipped
 
     for fname in sorted(os.listdir(root)):
+        if fname.startswith("."):
+            continue
         fpath = os.path.join(root, fname)
 
         if not os.path.isfile(fpath):
@@ -174,6 +176,8 @@ def _validate_labeled_root(
         count = 0
 
         for fname in sorted(os.listdir(class_path)):
+            if fname.startswith("."):
+                continue
             fpath = os.path.join(class_path, fname)
 
             if not os.path.isfile(fpath):
@@ -603,6 +607,8 @@ def discover_for_training(
         count = 0
 
         for fname in sorted(os.listdir(cls_path)):
+            if fname.startswith("."):
+                continue
             path = os.path.join(
                 cls_path,
                 fname,
@@ -740,6 +746,8 @@ def discover_for_training(
             for fname in sorted(
                 os.listdir(cls_path)
             ):
+                if fname.startswith("."):
+                    continue
                 path = os.path.join(
                     cls_path,
                     fname,
