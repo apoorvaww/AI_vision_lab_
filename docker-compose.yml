@@ -1,0 +1,29 @@
+services:
+  visionlab:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ai-visionlab:latest
+    container_name: ai_visionlab_app
+    restart: unless-stopped
+    ports:
+      - "${PORT:-5000}:5000"
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "5000"
+      STAGE1_SECRET_KEY: "${STAGE1_SECRET_KEY:?Set STAGE1_SECRET_KEY in .env}"
+      FLASK_DEBUG: "${FLASK_DEBUG:-false}"
+      FLASK_ENV: "${FLASK_ENV:-production}"
+      MAX_UPLOAD_MB: "${MAX_UPLOAD_MB:-${STAGE1_MAX_UPLOAD_MB:-2048}}"
+    volumes:
+      - visionlab_data:/app/webapp_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  visionlab_data:
+    name: ai_visionlab_data
